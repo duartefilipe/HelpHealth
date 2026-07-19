@@ -8,7 +8,7 @@ data class RemoteDatabaseVersion(
 )
 
 class DatabaseSyncManager(
-    private val backendBaseUrl: String = "http://192.168.31.229:8080"
+    private val backendBaseUrl: String = "http://192.168.31.229:8090"
 ) {
 
     fun getSyncUrl(): String {

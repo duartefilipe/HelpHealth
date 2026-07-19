@@ -1,6 +1,7 @@
 package com.duartefilipe.helphealth.backend.controller;
 
 import com.duartefilipe.helphealth.backend.service.AnvisaAutoUpdaterService;
+import com.duartefilipe.helphealth.backend.service.AnvisaCmedIngestionService;
 import com.duartefilipe.helphealth.backend.service.SqliteExporterService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -10,7 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -24,11 +27,14 @@ public class DatabaseSyncController {
 
     private final SqliteExporterService sqliteExporterService;
     private final AnvisaAutoUpdaterService autoUpdaterService;
+    private final AnvisaCmedIngestionService ingestionService;
 
     public DatabaseSyncController(SqliteExporterService sqliteExporterService,
-                                  AnvisaAutoUpdaterService autoUpdaterService) {
+                                  AnvisaAutoUpdaterService autoUpdaterService,
+                                  AnvisaCmedIngestionService ingestionService) {
         this.sqliteExporterService = sqliteExporterService;
         this.autoUpdaterService = autoUpdaterService;
+        this.ingestionService = ingestionService;
     }
 
     @PostMapping("/sync-now")
@@ -38,6 +44,17 @@ public class DatabaseSyncController {
             return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Base de dados sincronizada com a Anvisa e SQLite recompilado!"));
         } else {
             return ResponseEntity.internalServerError().body(Map.of("status", "ERROR", "message", "Falha ao baixar/sincronizar dados da Anvisa."));
+        }
+    }
+
+    @PostMapping(value = "/upload-csv", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadCsv(@RequestParam("file") MultipartFile file) {
+        try {
+            ingestionService.processAnvisaMedicamentosCsv(file.getInputStream());
+            sqliteExporterService.generateCompressedSqliteDatabase();
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "CSV da Anvisa ingerido no PostgreSQL e SQLite recompilado com sucesso!"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("status", "ERROR", "message", "Erro ao processar arquivo CSV: " + e.getMessage()));
         }
     }
 
