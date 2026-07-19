@@ -9,6 +9,10 @@ INSERT INTO fabricantes (cnpj, razao_social, nome_fantasia) VALUES
 ON CONFLICT (cnpj) DO NOTHING;
 
 INSERT INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular, cnpj_fabricante, status_registro) VALUES
+('7896004700654', 'ADVIL', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'REFERENCIA', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000015', false, '49179261000121', 'ATIVO'),
+('7896422500661', 'IBUPROFENO', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'GENERICO', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000016', false, '00394544000185', 'ATIVO'),
+('7891059000678', 'ALIVIUM', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'SIMILAR INTERCAMBIAVEL', 'ISENTO', false, false, null, false, '49179261000121', 'ATIVO'),
+
 ('7891010000011', 'TYLENOL', 'PARACETAMOL', '750 MG', 'COMPRIMIDO', 'REFERENCIA', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000001', false, '33018514000128', 'ATIVO'),
 ('7896422500022', 'PARACETAMOL', 'PARACETAMOL', '750 MG', 'COMPRIMIDO', 'GENERICO', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000002', false, '00394544000185', 'ATIVO'),
 ('7896004700033', 'PARALGEN', 'PARACETAMOL', '750 MG', 'COMPRIMIDO', 'SIMILAR INTERCAMBIAVEL', 'ISENTO', false, false, null, false, '61082004000112', 'ATIVO'),
@@ -31,23 +35,44 @@ INSERT INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, fo
 ON CONFLICT (ean) DO NOTHING;
 
 INSERT INTO precos_cmed (ean, uf, pmc_zero_icms, pmc_18_icms) VALUES
+('7896004700654', 'SP', 19.90, 23.50),
+('7896004700654', 'RS', 19.90, 23.21),
+('7896422500661', 'SP', 9.90, 11.90),
+('7896422500661', 'RS', 9.90, 11.75),
+('7891059000678', 'SP', 11.50, 13.80),
+('7891059000678', 'RS', 11.50, 13.62),
+
 ('7891010000011', 'SP', 15.50, 18.90),
+('7891010000011', 'RS', 15.50, 18.67),
 ('7896422500022', 'SP', 7.20, 8.80),
+('7896422500022', 'RS', 7.20, 8.67),
 ('7896004700033', 'SP', 8.10, 9.90),
+('7896004700033', 'RS', 8.10, 9.76),
 
 ('7891059000144', 'SP', 22.00, 26.80),
+('7891059000144', 'RS', 22.00, 26.50),
 ('7896422500155', 'SP', 9.50, 11.60),
+('7896422500155', 'RS', 9.50, 11.45),
 ('7896004700166', 'SP', 10.20, 12.40),
+('7896004700166', 'RS', 10.20, 12.29),
 
 ('7891059000274', 'SP', 45.00, 54.90),
+('7891059000274', 'RS', 45.00, 54.21),
 ('7896422500281', 'SP', 18.30, 22.30),
+('7896422500281', 'RS', 18.30, 22.05),
 
 ('7891059000397', 'SP', 38.00, 46.30),
+('7891059000397', 'RS', 38.00, 45.78),
 ('7896422500304', 'SP', 14.20, 17.30),
+('7896422500304', 'RS', 14.20, 17.11),
 
 ('7891059000410', 'SP', 29.00, 35.40),
+('7891059000410', 'RS', 29.00, 34.93),
 ('7896422500423', 'SP', 0.00, 0.00),
+('7896422500423', 'RS', 0.00, 0.00),
 
 ('7891059000533', 'SP', 65.00, 79.30),
-('7896422500540', 'SP', 0.00, 0.00)
+('7891059000533', 'RS', 65.00, 78.31),
+('7896422500540', 'SP', 0.00, 0.00),
+('7896422500540', 'RS', 0.00, 0.00)
 ON CONFLICT DO NOTHING;

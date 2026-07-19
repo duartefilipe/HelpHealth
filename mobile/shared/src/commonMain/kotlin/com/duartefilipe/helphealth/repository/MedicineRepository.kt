@@ -22,8 +22,23 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
     fun searchMedicamentos(query: String): List<Medicamentos> {
-        if (query.isBlank()) return getAllMedicamentos()
-        return dbQueries.searchByText(query).executeAsList()
+        val cleanQuery = query.trim()
+        if (cleanQuery.isBlank()) return getAllMedicamentos()
+
+        var results = dbQueries.searchByText(cleanQuery).executeAsList()
+
+        if (results.isEmpty()) {
+            // Normalização e tolerância a erros de digitação (ex: "adivil" -> "advil")
+            val normalizedQuery = cleanQuery
+                .replace("adivil", "advil", ignoreCase = true)
+                .replace("adiv", "adv", ignoreCase = true)
+
+            if (normalizedQuery != cleanQuery) {
+                results = dbQueries.searchByText(normalizedQuery).executeAsList()
+            }
+        }
+
+        return results
     }
 
     fun checkInterchangeability(medicine: Medicamentos): InterchangeabilityResult {
