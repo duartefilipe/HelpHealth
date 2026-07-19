@@ -1,5 +1,6 @@
 package com.duartefilipe.helphealth.backend.controller;
 
+import com.duartefilipe.helphealth.backend.service.AnvisaAutoUpdaterService;
 import com.duartefilipe.helphealth.backend.service.SqliteExporterService;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
@@ -7,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -21,9 +23,22 @@ import java.util.Map;
 public class DatabaseSyncController {
 
     private final SqliteExporterService sqliteExporterService;
+    private final AnvisaAutoUpdaterService autoUpdaterService;
 
-    public DatabaseSyncController(SqliteExporterService sqliteExporterService) {
+    public DatabaseSyncController(SqliteExporterService sqliteExporterService,
+                                  AnvisaAutoUpdaterService autoUpdaterService) {
         this.sqliteExporterService = sqliteExporterService;
+        this.autoUpdaterService = autoUpdaterService;
+    }
+
+    @PostMapping("/sync-now")
+    public ResponseEntity<Map<String, Object>> syncNow() {
+        boolean success = autoUpdaterService.syncWithAnvisaOfficialSource();
+        if (success) {
+            return ResponseEntity.ok(Map.of("status", "SUCCESS", "message", "Base de dados sincronizada com a Anvisa e SQLite recompilado!"));
+        } else {
+            return ResponseEntity.internalServerError().body(Map.of("status", "ERROR", "message", "Falha ao baixar/sincronizar dados da Anvisa."));
+        }
     }
 
     @GetMapping("/download")
