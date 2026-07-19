@@ -17,8 +17,12 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
     private val database = HelpHealthDatabase(databaseDriverFactory.createDriver())
     private val dbQueries = database.helpHealthDatabaseQueries
 
+    fun getAllMedicamentos(): List<Medicamentos> {
+        return dbQueries.getAllMedicamentos().executeAsList()
+    }
+
     fun searchMedicamentos(query: String): List<Medicamentos> {
-        if (query.isBlank()) return emptyList()
+        if (query.isBlank()) return getAllMedicamentos()
         return dbQueries.searchByText(query).executeAsList()
     }
 

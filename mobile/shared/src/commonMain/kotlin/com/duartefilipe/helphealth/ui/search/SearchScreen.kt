@@ -25,7 +25,13 @@ fun SearchScreen(
     searchQueryOverride: String? = null
 ) {
     var searchQuery by remember { mutableStateOf(searchQueryOverride ?: "") }
-    var searchResults by remember { mutableStateOf(emptyList<Medicamentos>()) }
+    var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery)) }
+
+    LaunchedEffect(Unit) {
+        if (searchResults.isEmpty()) {
+            searchResults = repository.getAllMedicamentos()
+        }
+    }
 
     LaunchedEffect(searchQueryOverride) {
         if (!searchQueryOverride.isNullOrBlank()) {
