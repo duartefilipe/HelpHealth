@@ -1,6 +1,7 @@
 -- População Inicial de Dados Oficiais da Anvisa / CMED
 
 INSERT INTO fabricantes (cnpj, razao_social, nome_fantasia) VALUES
+('43940618000144', 'ELI LILLY DO BRASIL LTDA', 'Eli Lilly'),
 ('33018514000128', 'SANOFI MEDLEY FARMACEUTICA LTDA', 'Sanofi / Medley'),
 ('00394544000185', 'MEDLEY FARMACEUTICA LTDA', 'Medley'),
 ('61082004000112', 'EMS S.A.', 'EMS Farmacêutica'),
@@ -9,6 +10,9 @@ INSERT INTO fabricantes (cnpj, razao_social, nome_fantasia) VALUES
 ON CONFLICT (cnpj) DO NOTHING;
 
 INSERT INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular, cnpj_fabricante, status_registro) VALUES
+('7896382709811', 'MOUNJARO', 'TIRZEPATIDA', '5 MG/0.5 ML', 'SOLUCAO INJETAVEL', 'REFERENCIA', 'VERMELHA', false, true, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000018', false, '43940618000144', 'ATIVO'),
+('7896382709828', 'MOUNJARO', 'TIRZEPATIDA', '10 MG/0.5 ML', 'SOLUCAO INJETAVEL', 'REFERENCIA', 'VERMELHA', false, true, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000019', false, '43940618000144', 'ATIVO'),
+
 ('7896004700654', 'ADVIL', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'REFERENCIA', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000015', false, '49179261000121', 'ATIVO'),
 ('7896422500661', 'IBUPROFENO', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'GENERICO', 'ISENTO', false, false, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000016', false, '00394544000185', 'ATIVO'),
 ('7891059000678', 'ALIVIUM', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'SIMILAR INTERCAMBIAVEL', 'ISENTO', false, false, null, false, '49179261000121', 'ATIVO'),
@@ -35,6 +39,11 @@ INSERT INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, fo
 ON CONFLICT (ean) DO NOTHING;
 
 INSERT INTO precos_cmed (ean, uf, pmc_zero_icms, pmc_18_icms) VALUES
+('7896382709811', 'SP', 1450.00, 1768.30),
+('7896382709811', 'RS', 1450.00, 1746.99),
+('7896382709828', 'SP', 2900.00, 3536.60),
+('7896382709828', 'RS', 2900.00, 3493.98),
+
 ('7896004700654', 'SP', 19.90, 23.50),
 ('7896004700654', 'RS', 19.90, 23.21),
 ('7896422500661', 'SP', 9.90, 11.90),

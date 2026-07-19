@@ -28,10 +28,11 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
         var results = dbQueries.searchByText(cleanQuery).executeAsList()
 
         if (results.isEmpty()) {
-            // Normalização e tolerância a erros de digitação (ex: "adivil" -> "advil")
+            // Normalização e tolerância a erros de digitação (ex: "adivil" -> "advil", "monjaro" -> "mounjaro")
             val normalizedQuery = cleanQuery
                 .replace("adivil", "advil", ignoreCase = true)
                 .replace("adiv", "adv", ignoreCase = true)
+                .replace("monjaro", "mounjaro", ignoreCase = true)
 
             if (normalizedQuery != cleanQuery) {
                 results = dbQueries.searchByText(normalizedQuery).executeAsList()

@@ -45,7 +45,7 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("HelpHealth - Farmácia Offline", fontWeight = FontWeight.Bold) },
+                title = { Text("HelpHealth 🟢 Online", fontWeight = FontWeight.Bold) },
                 actions = {
                     IconButton(
                         onClick = {

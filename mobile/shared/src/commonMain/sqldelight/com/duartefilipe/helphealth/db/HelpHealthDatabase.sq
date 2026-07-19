@@ -67,6 +67,7 @@ WHERE ean = :ean AND uf = :uf;
 -- Povoamento Inicial do Banco Local
 
 INSERT OR IGNORE INTO fabricantes (cnpj, razao_social, nome_fantasia) VALUES
+('43940618000144', 'ELI LILLY DO BRASIL LTDA', 'Eli Lilly'),
 ('33018514000128', 'SANOFI MEDLEY FARMACEUTICA LTDA', 'Sanofi / Medley'),
 ('00394544000185', 'MEDLEY FARMACEUTICA LTDA', 'Medley'),
 ('61082004000112', 'EMS S.A.', 'EMS Farmacêutica'),
@@ -74,6 +75,9 @@ INSERT OR IGNORE INTO fabricantes (cnpj, razao_social, nome_fantasia) VALUES
 ('49179261000121', 'NEO QUIMICA / HYPERA S.A.', 'Neo Química');
 
 INSERT OR IGNORE INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular, cnpj_fabricante, status_registro) VALUES
+('7896382709811', 'MOUNJARO', 'TIRZEPATIDA', '5 MG/0.5 ML', 'SOLUCAO INJETAVEL', 'REFERENCIA', 'VERMELHA', 0, 1, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000018', 0, '43940618000144', 'ATIVO'),
+('7896382709828', 'MOUNJARO', 'TIRZEPATIDA', '10 MG/0.5 ML', 'SOLUCAO INJETAVEL', 'REFERENCIA', 'VERMELHA', 0, 1, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000019', 0, '43940618000144', 'ATIVO'),
+
 ('7896004700654', 'ADVIL', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'REFERENCIA', 'ISENTO', 0, 0, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000015', 0, '49179261000121', 'ATIVO'),
 ('7896422500661', 'IBUPROFENO', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'GENERICO', 'ISENTO', 0, 0, 'https://consultas.anvisa.gov.br/api/consulta/bula/25351.000016', 0, '00394544000185', 'ATIVO'),
 ('7891059000678', 'ALIVIUM', 'IBUPROFENO', '400 MG', 'CAPSULA MOLE', 'SIMILAR INTERCAMBIAVEL', 'ISENTO', 0, 0, NULL, 0, '49179261000121', 'ATIVO'),
@@ -99,6 +103,11 @@ INSERT OR IGNORE INTO medicamentos (ean, nome_comercial, principio_ativo, concen
 ('7896422500540', 'INSULINA NPH', 'INSULINA NPH', '100 UI/ML', 'SUSPENSAO INJETAVEL', 'GENERICO', 'VERMELHA', 0, 1, NULL, 1, '61082004000112', 'ATIVO');
 
 INSERT OR IGNORE INTO precos_cmed (ean, uf, pmc_zero_icms, pmc_18_icms) VALUES
+('7896382709811', 'SP', 1450.00, 1768.30),
+('7896382709811', 'RS', 1450.00, 1746.99),
+('7896382709828', 'SP', 2900.00, 3536.60),
+('7896382709828', 'RS', 2900.00, 3493.98),
+
 ('7896004700654', 'SP', 19.90, 23.50),
 ('7896004700654', 'RS', 19.90, 23.21),
 ('7896422500661', 'SP', 9.90, 11.90),
