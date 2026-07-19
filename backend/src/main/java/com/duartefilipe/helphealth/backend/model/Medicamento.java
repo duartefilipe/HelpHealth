@@ -1,8 +1,6 @@
 package com.duartefilipe.helphealth.backend.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "medicamentos")
@@ -12,31 +10,25 @@ public class Medicamento {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Size(max = 14)
-    @Column(unique = true)
+    @Column(name = "ean", length = 50)
     private String ean;
 
-    @NotNull
-    @Size(max = 150)
-    @Column(name = "nome_comercial", nullable = false)
+    @Column(name = "nome_comercial", columnDefinition = "TEXT")
     private String nomeComercial;
 
-    @NotNull
-    @Column(name = "principio_ativo", columnDefinition = "TEXT", nullable = false)
+    @Column(name = "principio_ativo", columnDefinition = "TEXT")
     private String principioAtivo;
 
-    @Size(max = 100)
+    @Column(name = "concentracao", columnDefinition = "TEXT")
     private String concentracao;
 
-    @Size(max = 100)
-    @Column(name = "forma_farmaceutica")
+    @Column(name = "forma_farmaceutica", columnDefinition = "TEXT")
     private String formaFarmaceutica;
 
-    @Size(max = 50)
-    @Column(name = "categoria_regulatoria")
+    @Column(name = "categoria_regulatoria", length = 100)
     private String categoriaRegulatoria;
 
-    @Size(max = 50)
+    @Column(name = "tarja", length = 100)
     private String tarja;
 
     @Column(name = "retencao_receita")
@@ -55,8 +47,7 @@ public class Medicamento {
     @JoinColumn(name = "cnpj_fabricante", referencedColumnName = "cnpj")
     private Fabricante fabricante;
 
-    @Size(max = 20)
-    @Column(name = "status_registro")
+    @Column(name = "status_registro", length = 50)
     private String statusRegistro;
 
     public Medicamento() {}

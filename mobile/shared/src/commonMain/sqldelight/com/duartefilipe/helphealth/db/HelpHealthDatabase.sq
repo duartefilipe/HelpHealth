@@ -34,17 +34,18 @@ CREATE INDEX idx_med_ean ON medicamentos (ean);
 
 -- Consultas SQLDelight
 
-getAllMedicamentos:
+getAllMedicamentosPaged:
 SELECT *
 FROM medicamentos
-LIMIT 20;
+LIMIT :limit OFFSET :offset;
 
-searchByText:
+searchByTextPaged:
 SELECT *
 FROM medicamentos
 WHERE nome_comercial LIKE '%' || :query || '%'
    OR principio_ativo LIKE '%' || :query || '%'
-   OR ean LIKE '%' || :query || '%';
+   OR ean LIKE '%' || :query || '%'
+LIMIT :limit OFFSET :offset;
 
 findEquivalents:
 SELECT *

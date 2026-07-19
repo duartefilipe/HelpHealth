@@ -6,10 +6,10 @@ import com.duartefilipe.helphealth.backend.model.PrecoCmed;
 import com.duartefilipe.helphealth.backend.repository.FabricanteRepository;
 import com.duartefilipe.helphealth.backend.repository.MedicamentoRepository;
 import com.duartefilipe.helphealth.backend.repository.PrecoCmedRepository;
+import com.opencsv.CSVParserBuilder;
 import com.opencsv.CSVReader;
 import com.opencsv.CSVReaderBuilder;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -32,81 +32,69 @@ public class AnvisaCmedIngestionService {
         this.precoCmedRepository = precoCmedRepository;
     }
 
-    @Transactional
     public void processAnvisaMedicamentosCsv(InputStream csvInputStream) throws Exception {
         try (CSVReader reader = new CSVReaderBuilder(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8))
+                .withCSVParser(new CSVParserBuilder().withSeparator(';').build())
                 .withSkipLines(1) // Ignora cabeçalho
                 .build()) {
 
             String[] line;
             while ((line = reader.readNext()) != null) {
-                if (line.length < 13) continue;
+                if (line.length < 5) continue;
 
-                String cnpj = sanitizeString(line[0]);
-                String razaoSocial = sanitizeString(line[1]);
-                String nomeFantasia = sanitizeString(line[2]);
+                String principioAtivo = sanitizeString(line[0]);
+                String cnpj = sanitizeString(line[1]);
+                String razaoSocial = sanitizeString(line[2]);
                 String ean = sanitizeString(line[3]);
                 String nomeComercial = sanitizeString(line[4]);
-                String principioAtivo = sanitizeString(line[5]);
-                String concentracao = sanitizeString(line[6]);
-                String formaFarmaceutica = sanitizeString(line[7]);
-                String categoriaRegulatoria = sanitizeString(line[8]);
-                String tarja = sanitizeString(line[9]);
-                boolean retencaoReceita = parseBoolean(line[10]);
-                boolean precisaRefrigeracao = parseBoolean(line[11]);
-                String linkBula = sanitizeString(line[12]);
+                String apresentacao = line.length > 5 ? sanitizeString(line[5]) : null;
+                String categoriaRegulatoria = line.length > 7 ? sanitizeString(line[7]) : "SIMILAR";
+                String tarja = line.length > 8 ? sanitizeString(line[8]) : "ISENTO";
+                BigDecimal pmcZero = line.length > 9 ? parseBigDecimal(line[9]) : BigDecimal.ZERO;
+                BigDecimal pmc18 = line.length > 10 ? parseBigDecimal(line[10]) : BigDecimal.ZERO;
 
-                if (cnpj != null && !cnpj.isEmpty()) {
-                    Fabricante fabricante = fabricanteRepository.findById(cnpj)
-                            .orElseGet(() -> fabricanteRepository.save(new Fabricante(cnpj, razaoSocial, nomeFantasia)));
-
-                    if (ean != null && !ean.isEmpty()) {
-                        Optional<Medicamento> existingMed = medicamentoRepository.findByEan(ean);
-                        Medicamento med = existingMed.orElseGet(Medicamento::new);
-                        med.setEan(ean);
-                        med.setNomeComercial(nomeComercial != null ? nomeComercial : "DESCONHECIDO");
-                        med.setPrincipioAtivo(principioAtivo != null ? principioAtivo : "NAO INFORMADO");
-                        med.setConcentracao(concentracao);
-                        med.setFormaFarmaceutica(formaFarmaceutica);
-                        med.setCategoriaRegulatoria(categoriaRegulatoria);
-                        med.setTarja(tarja);
-                        med.setRetencaoReceita(retencaoReceita);
-                        med.setPrecisaRefrigeracao(precisaRefrigeracao);
-                        med.setLinkBulaPaciente(linkBula);
-                        med.setFabricante(fabricante);
-                        med.setStatusRegistro("ATIVO");
-
-                        medicamentoRepository.save(med);
-                    }
+                if (cnpj == null || cnpj.isEmpty()) {
+                    cnpj = "00000000000000";
                 }
-            }
-        }
-    }
 
-    @Transactional
-    public void processCmedPrecosCsv(InputStream csvInputStream) throws Exception {
-        try (CSVReader reader = new CSVReaderBuilder(new InputStreamReader(csvInputStream, StandardCharsets.UTF_8))
-                .withSkipLines(1)
-                .build()) {
+                final String finalCnpj = cnpj;
+                final String finalRazaoSocial = razaoSocial != null ? razaoSocial : "LABORATORIO OFICIAL ANVISA";
 
-            String[] line;
-            while ((line = reader.readNext()) != null) {
-                if (line.length < 4) continue;
+                Fabricante fabricante = fabricanteRepository.findById(finalCnpj)
+                        .orElseGet(() -> fabricanteRepository.save(new Fabricante(finalCnpj, finalRazaoSocial, finalRazaoSocial)));
 
-                String ean = sanitizeString(line[0]);
-                String uf = sanitizeString(line[1]);
-                BigDecimal pmcZero = parseBigDecimal(line[2]);
-                BigDecimal pmc18 = parseBigDecimal(line[3]);
+                if (nomeComercial != null && !nomeComercial.isEmpty()) {
+                    String cleanEan = (ean != null && !ean.isEmpty() && !ean.equals("nan")) ? ean : "EAN_" + System.nanoTime();
 
-                if (ean != null && uf != null) {
-                    Optional<Medicamento> medOpt = medicamentoRepository.findByEan(ean);
-                    if (medOpt.isPresent()) {
-                        PrecoCmed preco = new PrecoCmed();
-                        preco.setMedicamento(medOpt.get());
-                        preco.setUf(uf.toUpperCase());
-                        preco.setPmcZeroIcms(pmcZero);
-                        preco.setPmc18Icms(pmc18);
-                        precoCmedRepository.save(preco);
+                    Optional<Medicamento> existingMed = medicamentoRepository.findByEan(cleanEan);
+                    Medicamento med = existingMed.orElseGet(Medicamento::new);
+                    med.setEan(cleanEan);
+                    med.setNomeComercial(nomeComercial);
+                    med.setPrincipioAtivo(principioAtivo != null ? principioAtivo : nomeComercial);
+                    med.setConcentracao(apresentacao);
+                    med.setFormaFarmaceutica(apresentacao);
+                    med.setCategoriaRegulatoria(categoriaRegulatoria != null ? categoriaRegulatoria : "SIMILAR");
+                    med.setTarja(tarja != null ? tarja : "ISENTO");
+                    med.setFabricante(fabricante);
+                    med.setStatusRegistro("ATIVO");
+
+                    medicamentoRepository.save(med);
+
+                    // Cadastra preços estaduais para RS e SP
+                    if (pmc18.compareTo(BigDecimal.ZERO) > 0 || pmcZero.compareTo(BigDecimal.ZERO) > 0) {
+                        PrecoCmed precoRs = new PrecoCmed();
+                        precoRs.setMedicamento(med);
+                        precoRs.setUf("RS");
+                        precoRs.setPmcZeroIcms(pmcZero);
+                        precoRs.setPmc18Icms(pmc18);
+                        precoCmedRepository.save(precoRs);
+
+                        PrecoCmed precoSp = new PrecoCmed();
+                        precoSp.setMedicamento(med);
+                        precoSp.setUf("SP");
+                        precoSp.setPmcZeroIcms(pmcZero);
+                        precoSp.setPmc18Icms(pmc18);
+                        precoCmedRepository.save(precoSp);
                     }
                 }
             }
@@ -116,13 +104,7 @@ public class AnvisaCmedIngestionService {
     private String sanitizeString(String input) {
         if (input == null) return null;
         String trimmed = input.trim();
-        return trimmed.isEmpty() ? null : trimmed;
-    }
-
-    private boolean parseBoolean(String input) {
-        if (input == null) return false;
-        String val = input.trim().toLowerCase();
-        return val.equals("sim") || val.equals("true") || val.equals("1") || val.equals("s");
+        return (trimmed.isEmpty() || trimmed.equalsIgnoreCase("nan") || trimmed.equalsIgnoreCase("null")) ? null : trimmed;
     }
 
     private BigDecimal parseBigDecimal(String input) {

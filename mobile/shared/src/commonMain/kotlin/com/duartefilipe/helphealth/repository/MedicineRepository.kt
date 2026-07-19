@@ -17,17 +17,19 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
     private val database = HelpHealthDatabase(databaseDriverFactory.createDriver())
     private val dbQueries = database.helpHealthDatabaseQueries
 
-    fun getAllMedicamentos(): List<Medicamentos> {
-        return dbQueries.getAllMedicamentos().executeAsList()
+    fun getAllMedicamentos(page: Int = 0, pageSize: Int = 20): List<Medicamentos> {
+        val offset = (page * pageSize).toLong()
+        return dbQueries.getAllMedicamentosPaged(limit = pageSize.toLong(), offset = offset).executeAsList()
     }
 
-    fun searchMedicamentos(query: String): List<Medicamentos> {
+    fun searchMedicamentos(query: String, page: Int = 0, pageSize: Int = 20): List<Medicamentos> {
         val cleanQuery = query.trim()
-        if (cleanQuery.isBlank()) return getAllMedicamentos()
+        val offset = (page * pageSize).toLong()
+        if (cleanQuery.isBlank()) return getAllMedicamentos(page, pageSize)
 
-        var results = dbQueries.searchByText(cleanQuery).executeAsList()
+        var results = dbQueries.searchByTextPaged(query = cleanQuery, limit = pageSize.toLong(), offset = offset).executeAsList()
 
-        if (results.isEmpty()) {
+        if (results.isEmpty() && page == 0) {
             // Normalização e tolerância a erros de digitação (ex: "adivil" -> "advil", "monjaro" -> "mounjaro")
             val normalizedQuery = cleanQuery
                 .replace("adivil", "advil", ignoreCase = true)
@@ -35,7 +37,7 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
                 .replace("monjaro", "mounjaro", ignoreCase = true)
 
             if (normalizedQuery != cleanQuery) {
-                results = dbQueries.searchByText(normalizedQuery).executeAsList()
+                results = dbQueries.searchByTextPaged(query = normalizedQuery, limit = pageSize.toLong(), offset = offset).executeAsList()
             }
         }
 

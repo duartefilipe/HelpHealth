@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
@@ -26,19 +27,42 @@ fun SearchScreen(
     searchQueryOverride: String? = null
 ) {
     var searchQuery by remember { mutableStateOf(searchQueryOverride ?: "") }
-    var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery)) }
+    var currentPage by remember { mutableStateOf(0) }
+    var canLoadMore by remember { mutableStateOf(true) }
+    var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery, page = 0)) }
     var isSyncing by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
 
-    LaunchedEffect(Unit) {
-        if (searchResults.isEmpty()) {
-            searchResults = repository.getAllMedicamentos()
+    fun resetAndSearch(query: String) {
+        searchQuery = query
+        currentPage = 0
+        canLoadMore = true
+        searchResults = repository.searchMedicamentos(query, page = 0)
+    }
+
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            canLoadMore && lastVisibleIndex >= searchResults.size - 2
+        }
+    }
+
+    LaunchedEffect(shouldLoadMore) {
+        if (shouldLoadMore && searchResults.isNotEmpty()) {
+            val nextPage = currentPage + 1
+            val newBatch = repository.searchMedicamentos(searchQuery, page = nextPage)
+            if (newBatch.isEmpty()) {
+                canLoadMore = false
+            } else {
+                currentPage = nextPage
+                searchResults = searchResults + newBatch
+            }
         }
     }
 
     LaunchedEffect(searchQueryOverride) {
         if (!searchQueryOverride.isNullOrBlank()) {
-            searchQuery = searchQueryOverride
-            searchResults = repository.searchMedicamentos(searchQueryOverride)
+            resetAndSearch(searchQueryOverride)
         }
     }
 
@@ -51,7 +75,7 @@ fun SearchScreen(
                         onClick = {
                             isSyncing = true
                             onSyncClick()
-                            searchResults = repository.getAllMedicamentos()
+                            resetAndSearch("")
                             isSyncing = false
                         }
                     ) {
@@ -75,10 +99,7 @@ fun SearchScreen(
             ) {
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = {
-                        searchQuery = it
-                        searchResults = repository.searchMedicamentos(it)
-                    },
+                    onValueChange = { resetAndSearch(it) },
                     modifier = Modifier.weight(1f),
                     label = { Text("Pesquisar por Remédio, Princípio ou EAN...") },
                     singleLine = true,
@@ -108,17 +129,31 @@ fun SearchScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (searchQuery.isBlank()) "Digite o nome ou escaneie o código de barras." else "Nenhum medicamento encontrado.",
+                        text = if (searchQuery.isBlank()) "Nenhum medicamento cadastrado." else "Nenhum medicamento encontrado.",
                         color = Color.Gray,
                         fontSize = 16.sp
                     )
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(searchResults) { medicine ->
                         MedicineCard(medicine = medicine, onClick = { onMedicineSelect(medicine) })
+                    }
+
+                    if (canLoadMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("Carregando mais medicamentos...", fontSize = 14.sp, color = Color.Gray)
+                            }
+                        }
                     }
                 }
             }

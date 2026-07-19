@@ -1,24 +1,19 @@
 package com.duartefilipe.helphealth.backend.model;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
 @Entity
 @Table(name = "fabricantes")
 public class Fabricante {
 
     @Id
-    @Size(max = 14)
+    @Column(name = "cnpj", length = 50)
     private String cnpj;
 
-    @NotNull
-    @Size(max = 255)
-    @Column(name = "razao_social", nullable = false)
+    @Column(name = "razao_social", columnDefinition = "TEXT")
     private String razaoSocial;
 
-    @Size(max = 255)
-    @Column(name = "nome_fantasia")
+    @Column(name = "nome_fantasia", columnDefinition = "TEXT")
     private String nomeFantasia;
 
     public Fabricante() {}
