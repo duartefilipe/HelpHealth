@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  helphealth-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: helphealth-backend
+    restart: always
+    ports:
+      - "8090:8090"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://192.168.31.229:15432/helphealth
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SERVER_PORT=8090
+      - HELPHEALTH_SQLITE_DB_PATH=/app/data/anvisa_app_database.db
+    volumes:
+      - helphealth-data:/app/data
+
+volumes:
+  helphealth-data:
+    driver: local
