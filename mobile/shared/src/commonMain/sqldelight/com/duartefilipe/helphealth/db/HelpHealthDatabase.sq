@@ -1,0 +1,60 @@
+CREATE TABLE fabricantes (
+    cnpj TEXT PRIMARY KEY NOT NULL,
+    razao_social TEXT NOT NULL,
+    nome_fantasia TEXT
+);
+
+CREATE TABLE medicamentos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    ean TEXT UNIQUE,
+    nome_comercial TEXT NOT NULL,
+    principio_ativo TEXT NOT NULL,
+    concentracao TEXT,
+    forma_farmaceutica TEXT,
+    categoria_regulatoria TEXT,
+    tarja TEXT,
+    retencao_receita INTEGER DEFAULT 0,
+    precisa_refrigeracao INTEGER DEFAULT 0,
+    link_bula_paciente TEXT,
+    faz_parte_farmacia_popular INTEGER DEFAULT 0,
+    cnpj_fabricante TEXT,
+    status_registro TEXT
+);
+
+CREATE TABLE precos_cmed (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    ean TEXT,
+    uf TEXT NOT NULL,
+    pmc_zero_icms REAL,
+    pmc_18_icms REAL
+);
+
+CREATE INDEX idx_med_busca ON medicamentos (principio_ativo, concentracao, forma_farmaceutica);
+CREATE INDEX idx_med_ean ON medicamentos (ean);
+
+-- Consultas SQLDelight
+
+searchByText:
+SELECT *
+FROM medicamentos
+WHERE nome_comercial LIKE '%' || :query || '%'
+   OR principio_ativo LIKE '%' || :query || '%'
+   OR ean LIKE '%' || :query || '%';
+
+findEquivalents:
+SELECT *
+FROM medicamentos
+WHERE principio_ativo = :principioAtivo
+  AND (concentracao = :concentracao OR :concentracao IS NULL)
+  AND (forma_farmaceutica = :formaFarmaceutica OR :formaFarmaceutica IS NULL)
+  AND status_registro = 'ATIVO';
+
+getFabricanteByCnpj:
+SELECT *
+FROM fabricantes
+WHERE cnpj = :cnpj;
+
+getPrecoByEanAndUf:
+SELECT *
+FROM precos_cmed
+WHERE ean = :ean AND uf = :uf;

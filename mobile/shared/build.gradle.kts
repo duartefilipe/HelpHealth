@@ -55,6 +55,7 @@ kotlin {
         val desktopMain by getting {
             dependencies {
                 implementation(compose.desktop.common)
+                implementation("app.cash.sqldelight:sqlite-driver:2.0.1")
             }
         }
     }
