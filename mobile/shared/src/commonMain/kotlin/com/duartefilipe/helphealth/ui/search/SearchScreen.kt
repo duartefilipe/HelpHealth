@@ -22,10 +22,12 @@ fun SearchScreen(
     repository: MedicineRepository,
     onMedicineSelect: (Medicamentos) -> Unit,
     onScanBarcodeClick: () -> Unit,
+    onSyncClick: () -> Unit = {},
     searchQueryOverride: String? = null
 ) {
     var searchQuery by remember { mutableStateOf(searchQueryOverride ?: "") }
     var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery)) }
+    var isSyncing by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (searchResults.isEmpty()) {
@@ -44,6 +46,18 @@ fun SearchScreen(
         topBar = {
             TopAppBar(
                 title = { Text("HelpHealth - Farmácia Offline", fontWeight = FontWeight.Bold) },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            isSyncing = true
+                            onSyncClick()
+                            searchResults = repository.getAllMedicamentos()
+                            isSyncing = false
+                        }
+                    ) {
+                        Text(if (isSyncing) "⏳" else "🔄", fontSize = 18.sp, color = Color.White)
+                    }
+                },
                 backgroundColor = MaterialTheme.colors.primary,
                 contentColor = Color.White
             )

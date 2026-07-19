@@ -1,5 +1,6 @@
 import androidx.compose.runtime.*
 import com.duartefilipe.helphealth.data.DatabaseDriverFactory
+import com.duartefilipe.helphealth.data.DatabaseSyncManager
 import com.duartefilipe.helphealth.db.Medicamentos
 import com.duartefilipe.helphealth.repository.MedicineRepository
 import com.duartefilipe.helphealth.ui.detail.MedicineDetailScreen
@@ -16,6 +17,7 @@ fun App(
     onOpenUrl: (String) -> Unit = {}
 ) {
     val repository = remember { MedicineRepository(databaseDriverFactory) }
+    val syncManager = remember { DatabaseSyncManager() }
     var selectedMedicine by remember { mutableStateOf<Medicamentos?>(null) }
     val networkStatus = remember {
         object : ConnectivityObserver {
@@ -29,6 +31,9 @@ fun App(
                 repository = repository,
                 onMedicineSelect = { selectedMedicine = it },
                 onScanBarcodeClick = onScanBarcodeClick,
+                onSyncClick = {
+                    // Dispara a sincronização
+                },
                 searchQueryOverride = scannedBarcodeQuery
             )
         } else {

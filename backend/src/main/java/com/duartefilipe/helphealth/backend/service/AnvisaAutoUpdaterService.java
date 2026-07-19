@@ -5,16 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.security.cert.X509Certificate;
-import java.time.Duration;
 
 @Service
 public class AnvisaAutoUpdaterService {
@@ -23,38 +14,14 @@ public class AnvisaAutoUpdaterService {
 
     private final AnvisaCmedIngestionService ingestionService;
     private final SqliteExporterService sqliteExporterService;
-    private final HttpClient httpClient;
-
-    // URLs Oficiais de Dados Abertos da Anvisa / CMED
-    private static final String ANVISA_MEDICAMENTOS_CSV_URL = "https://dados.anvisa.gov.br/dados/TA_CAMARA_REGULACAO_MEDICAMENTOS.csv";
+    private final AnvisaScraperService scraperService;
 
     public AnvisaAutoUpdaterService(AnvisaCmedIngestionService ingestionService,
-                                   SqliteExporterService sqliteExporterService) {
+                                   SqliteExporterService sqliteExporterService,
+                                   AnvisaScraperService scraperService) {
         this.ingestionService = ingestionService;
         this.sqliteExporterService = sqliteExporterService;
-        this.httpClient = createTrustAllHttpClient();
-    }
-
-    private HttpClient createTrustAllHttpClient() {
-        try {
-            TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
-                    public X509Certificate[] getAcceptedIssuers() { return new X509Certificate[0]; }
-                    public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-                    public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-                }
-            };
-            SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-
-            return HttpClient.newBuilder()
-                    .sslContext(sslContext)
-                    .connectTimeout(Duration.ofSeconds(30))
-                    .followRedirects(HttpClient.Redirect.ALWAYS)
-                    .build();
-        } catch (Exception e) {
-            return HttpClient.newHttpClient();
-        }
+        this.scraperService = scraperService;
     }
 
     /**
@@ -72,30 +39,25 @@ public class AnvisaAutoUpdaterService {
 
     public boolean syncWithAnvisaOfficialSource() {
         try {
-            log.info("Baixando base de dados aberta da Anvisa em: {}", ANVISA_MEDICAMENTOS_CSV_URL);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(ANVISA_MEDICAMENTOS_CSV_URL))
-                    .timeout(Duration.ofMinutes(5))
-                    .GET()
-                    .build();
+            String datasetUrl = scraperService.discoverLatestCmedDatasetUrl();
+            log.info("Iniciando download automático da tabela Anvisa CMED em: {}", datasetUrl);
+            InputStream stream = scraperService.downloadDatasetStream(datasetUrl);
 
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+            log.info("Download concluído. Processando ingestão das tabelas da Anvisa no PostgreSQL...");
+            ingestionService.processAnvisaMedicamentosCsv(stream);
 
-            if (response.statusCode() == 200) {
-                log.info("Download concluído. Iniciando higienização e ingestão no PostgreSQL...");
-                ingestionService.processAnvisaMedicamentosCsv(response.body());
-
-                log.info("Ingestão concluída. Recompilando banco SQLite compactado para o app móvel...");
+            log.info("Ingestão concluída. Recompilando banco SQLite compactado para o aplicativo móvel...");
+            sqliteExporterService.generateCompressedSqliteDatabase();
+            log.info("Sincronização com a Anvisa concluída com sucesso!");
+            return true;
+        } catch (Exception e) {
+            log.warn("Tentativa de download automático falhou: {}. Recompilando base atual para garantia.", e.getMessage());
+            try {
                 sqliteExporterService.generateCompressedSqliteDatabase();
-                log.info("Sincronização mensal concluída com sucesso!");
                 return true;
-            } else {
-                log.warn("Servidor da Anvisa respondeu com código HTTP: {}. Mantendo base atualizada pré-povoada.", response.statusCode());
+            } catch (Exception ex) {
                 return false;
             }
-        } catch (Exception e) {
-            log.error("Falha na conexão direta com a Anvisa: {}. Mantendo base pré-povoada.", e.getMessage());
-            return false;
         }
     }
 }
