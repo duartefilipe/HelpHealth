@@ -1,0 +1,20 @@
+# IDE / Editor Files
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build and local files
+build/
+target/
+bin/
+out/
+*.log
+.env
+.env.local
+.env.*.local
