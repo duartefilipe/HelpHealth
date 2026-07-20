@@ -19,6 +19,7 @@ fun App(
     val repository = remember { MedicineRepository(databaseDriverFactory) }
     val syncManager = remember { DatabaseSyncManager() }
     var selectedMedicine by remember { mutableStateOf<Medicamentos?>(null) }
+    val appScope = rememberCoroutineScope()
     val networkStatus = remember {
         object : ConnectivityObserver {
             override fun currentStatus() = NetworkStatus.Available
@@ -31,9 +32,7 @@ fun App(
                 repository = repository,
                 onMedicineSelect = { selectedMedicine = it },
                 onScanBarcodeClick = onScanBarcodeClick,
-                onSyncClick = {
-                    // Dispara a sincronização
-                },
+                appScope = appScope,
                 searchQueryOverride = scannedBarcodeQuery
             )
         } else {

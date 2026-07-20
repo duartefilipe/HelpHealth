@@ -172,7 +172,7 @@ fun SearchScreen(
     repository: MedicineRepository,
     onMedicineSelect: (Medicamentos) -> Unit,
     onScanBarcodeClick: () -> Unit,
-    onSyncClick: () -> Unit = {},
+    appScope: kotlinx.coroutines.CoroutineScope,
     searchQueryOverride: String? = null
 ) {
     var searchQuery by remember { mutableStateOf(searchQueryOverride ?: "") }
@@ -193,14 +193,16 @@ fun SearchScreen(
         if (online) {
             val localCount = repository.countMedicamentos()
             if (localCount < 100) { // Se tiver poucos dados locais, sincroniza automaticamente
-                isSyncing = true
-                syncStatusText = "Conectado! Sincronizando..."
-                val imported = syncMedicinesFromServer(syncManager, repository.database) { status ->
-                    syncStatusText = status
+                appScope.launch {
+                    isSyncing = true
+                    syncStatusText = "Conectado! Sincronizando..."
+                    val imported = syncMedicinesFromServer(syncManager, repository.database) { status ->
+                        syncStatusText = status
+                    }
+                    syncStatusText = if (imported > 0) "$imported novos medicamentos ✅" else "Base atualizada"
+                    isSyncing = false
+                    resetAndSearch(searchQuery)
                 }
-                syncStatusText = if (imported > 0) "$imported novos medicamentos ✅" else "Base atualizada"
-                isSyncing = false
-                searchResults = repository.searchMedicamentos(searchQuery, page = 0)
             }
         }
     }
@@ -260,7 +262,7 @@ fun SearchScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            coroutineScope.launch {
+                            appScope.launch {
                                 isSyncing = true
                                 syncStatusText = "Verificando servidor..."
                                 isServerOnline = syncManager.checkServerOnline()
