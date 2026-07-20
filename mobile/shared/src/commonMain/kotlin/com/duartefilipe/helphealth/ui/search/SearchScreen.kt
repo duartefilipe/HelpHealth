@@ -14,9 +14,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.duartefilipe.helphealth.data.DatabaseSyncManager
 import com.duartefilipe.helphealth.db.Medicamentos
 import com.duartefilipe.helphealth.repository.MedicineRepository
 import com.duartefilipe.helphealth.ui.components.*
+import kotlinx.coroutines.launch
 
 @Composable
 fun SearchScreen(
@@ -31,7 +33,15 @@ fun SearchScreen(
     var canLoadMore by remember { mutableStateOf(true) }
     var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery, page = 0)) }
     var isSyncing by remember { mutableStateOf(false) }
+    var isServerOnline by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val syncManager = remember { DatabaseSyncManager() }
+    val coroutineScope = rememberCoroutineScope()
+
+    // Checa o status real de conexão com o servidor ao abrir a tela
+    LaunchedEffect(Unit) {
+        isServerOnline = syncManager.checkServerOnline()
+    }
 
     fun resetAndSearch(query: String) {
         searchQuery = query
@@ -69,12 +79,20 @@ fun SearchScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("HelpHealth 🟢 Online", fontWeight = FontWeight.Bold) },
+                title = { 
+                    Text(
+                        text = if (isServerOnline) "HelpHealth 🟢 Online" else "HelpHealth 🔴 Offline (Local)", 
+                        fontWeight = FontWeight.Bold
+                    ) 
+                },
                 actions = {
                     IconButton(
                         onClick = {
                             isSyncing = true
                             onSyncClick()
+                            coroutineScope.launch {
+                                isServerOnline = syncManager.checkServerOnline()
+                            }
                             resetAndSearch("")
                             isSyncing = false
                         }
