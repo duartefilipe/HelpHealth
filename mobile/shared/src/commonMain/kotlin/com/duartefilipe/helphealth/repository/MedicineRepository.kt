@@ -14,8 +14,12 @@ data class InterchangeabilityResult(
 
 class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
 
-    private val database = HelpHealthDatabase(databaseDriverFactory.createDriver())
+    val database = HelpHealthDatabase(databaseDriverFactory.createDriver())
     private val dbQueries = database.helpHealthDatabaseQueries
+
+    fun countMedicamentos(): Long {
+        return dbQueries.countMedicamentos().executeAsOne()
+    }
 
     fun getAllMedicamentos(page: Int = 0, pageSize: Int = 20): List<Medicamentos> {
         val offset = (page * pageSize).toLong()

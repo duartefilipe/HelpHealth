@@ -32,6 +32,18 @@ CREATE TABLE precos_cmed (
 CREATE INDEX idx_med_busca ON medicamentos (principio_ativo, concentracao, forma_farmaceutica);
 CREATE INDEX idx_med_ean ON medicamentos (ean);
 
+-- Queries de escrita para sync
+
+insertMedicamento:
+INSERT OR IGNORE INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular)
+VALUES (:ean, :nome_comercial, :principio_ativo, :concentracao, :forma_farmaceutica, :categoria_regulatoria, :tarja, :retencao_receita, :precisa_refrigeracao, :link_bula_paciente, :faz_parte_farmacia_popular);
+
+deleteAllMedicamentos:
+DELETE FROM medicamentos;
+
+countMedicamentos:
+SELECT COUNT(*) FROM medicamentos;
+
 -- Consultas SQLDelight
 
 getAllMedicamentosPaged:

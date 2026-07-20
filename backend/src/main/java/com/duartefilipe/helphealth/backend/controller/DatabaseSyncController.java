@@ -31,13 +31,16 @@ public class DatabaseSyncController {
     private final SqliteExporterService sqliteExporterService;
     private final AnvisaAutoUpdaterService autoUpdaterService;
     private final AnvisaCmedIngestionService ingestionService;
+    private final com.duartefilipe.helphealth.backend.repository.MedicamentoRepository medicamentoRepository;
 
     public DatabaseSyncController(SqliteExporterService sqliteExporterService,
                                   AnvisaAutoUpdaterService autoUpdaterService,
-                                  AnvisaCmedIngestionService ingestionService) {
+                                  AnvisaCmedIngestionService ingestionService,
+                                  com.duartefilipe.helphealth.backend.repository.MedicamentoRepository medicamentoRepository) {
         this.sqliteExporterService = sqliteExporterService;
         this.autoUpdaterService = autoUpdaterService;
         this.ingestionService = ingestionService;
+        this.medicamentoRepository = medicamentoRepository;
     }
 
     @PostMapping("/sync-now")
@@ -96,6 +99,19 @@ public class DatabaseSyncController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/medicines")
+    public ResponseEntity<?> getMedicines(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "500") int size) {
+        try {
+            var pageable = org.springframework.data.domain.PageRequest.of(page, size);
+            var medicinesPage = medicamentoRepository.findAll(pageable);
+            return ResponseEntity.ok(medicinesPage);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 }

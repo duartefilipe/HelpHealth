@@ -15,10 +15,139 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.duartefilipe.helphealth.data.DatabaseSyncManager
+import com.duartefilipe.helphealth.db.HelpHealthDatabase
 import com.duartefilipe.helphealth.db.Medicamentos
 import com.duartefilipe.helphealth.repository.MedicineRepository
 import com.duartefilipe.helphealth.ui.components.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+// Simple JSON string field extractor — avoids org.json dependency in commonMain
+private fun extractStringField(json: String, field: String): String? {
+    val key = "\"$field\""
+    val idx = json.indexOf(key)
+    if (idx < 0) return null
+    val afterKey = json.indexOf(':', idx + key.length)
+    if (afterKey < 0) return null
+    val rest = json.substring(afterKey + 1).trimStart()
+    if (rest.startsWith("null")) return null
+    if (rest.startsWith("\"")) {
+        val end = rest.indexOf('"', 1)
+        if (end < 0) return null
+        return rest.substring(1, end)
+    }
+    // boolean or number
+    val endIdx = rest.indexOfFirst { it == ',' || it == '}' || it == ']' }
+    return if (endIdx > 0) rest.substring(0, endIdx).trim() else rest.trim()
+}
+
+private fun extractBoolField(json: String, field: String): Boolean {
+    return extractStringField(json, field)?.equals("true", ignoreCase = true) == true
+}
+
+private fun splitJsonArray(jsonArrayStr: String): List<String> {
+    val result = mutableListOf<String>()
+    var depth = 0
+    var start = -1
+    for (i in jsonArrayStr.indices) {
+        val c = jsonArrayStr[i]
+        if (c == '{') {
+            if (depth == 0) start = i
+            depth++
+        } else if (c == '}') {
+            depth--
+            if (depth == 0 && start >= 0) {
+                result.add(jsonArrayStr.substring(start, i + 1))
+                start = -1
+            }
+        }
+    }
+    return result
+}
+
+suspend fun syncMedicinesFromServer(
+    syncManager: DatabaseSyncManager,
+    database: HelpHealthDatabase,
+    onProgress: (String) -> Unit
+): Int = withContext(Dispatchers.IO) {
+    val dbQueries = database.helpHealthDatabaseQueries
+    var totalImported = 0
+    var page = 0
+    val pageSize = 500
+
+    try {
+        while (true) {
+            withContext(Dispatchers.Main) { onProgress("Baixando página ${page + 1}...") }
+            val jsonText = syncManager.fetchMedicinesJson(page, pageSize) ?: break
+
+            // Extract "content" array
+            val contentStart = jsonText.indexOf("\"content\"")
+            if (contentStart < 0) break
+            val arrayStart = jsonText.indexOf('[', contentStart)
+            if (arrayStart < 0) break
+            // Find matching ]
+            var depth = 0
+            var arrayEnd = -1
+            for (i in arrayStart until jsonText.length) {
+                if (jsonText[i] == '[') depth++
+                else if (jsonText[i] == ']') {
+                    depth--
+                    if (depth == 0) { arrayEnd = i; break }
+                }
+            }
+            if (arrayEnd < 0) break
+
+            val contentStr = jsonText.substring(arrayStart, arrayEnd + 1)
+            val items = splitJsonArray(contentStr)
+
+            if (items.isEmpty()) break
+
+            for (item in items) {
+                val ean = extractStringField(item, "ean") ?: "AUTO_${System.nanoTime()}"
+                val nomeComercial = extractStringField(item, "nomeComercial") ?: ""
+                val principioAtivo = extractStringField(item, "principioAtivo") ?: ""
+                val concentracao = extractStringField(item, "concentracao")
+                val formaFarmaceutica = extractStringField(item, "formaFarmaceutica")
+                val categoriaRegulatoria = extractStringField(item, "categoriaRegulatoria") ?: "SIMILAR"
+                val tarja = extractStringField(item, "tarja") ?: ""
+                val retencaoReceita = if (extractBoolField(item, "retencaoReceita")) 1L else 0L
+                val precisaRefrigeracao = if (extractBoolField(item, "precisaRefrigeracao")) 1L else 0L
+                val fazParteFarmaciaPopular = if (extractBoolField(item, "fazParteFarmaciaPopular")) 1L else 0L
+
+                if (nomeComercial.isNotBlank()) {
+                    try {
+                        dbQueries.insertMedicamento(
+                            ean = ean,
+                            nome_comercial = nomeComercial,
+                            principio_ativo = principioAtivo.ifBlank { nomeComercial },
+                            concentracao = concentracao,
+                            forma_farmaceutica = formaFarmaceutica,
+                            categoria_regulatoria = categoriaRegulatoria,
+                            tarja = tarja,
+                            retencao_receita = retencaoReceita,
+                            precisa_refrigeracao = precisaRefrigeracao,
+                            link_bula_paciente = null,
+                            faz_parte_farmacia_popular = fazParteFarmaciaPopular
+                        )
+                        totalImported++
+                    } catch (_: Exception) {
+                        // Ignora duplicatas
+                    }
+                }
+            }
+
+            // Check "last" field
+            val isLast = jsonText.contains("\"last\":true")
+            if (isLast) break
+            page++
+        }
+    } catch (e: Exception) {
+        e.printStackTrace()
+    }
+
+    totalImported
+}
 
 @Composable
 fun SearchScreen(
@@ -34,13 +163,28 @@ fun SearchScreen(
     var searchResults by remember { mutableStateOf(repository.searchMedicamentos(searchQuery, page = 0)) }
     var isSyncing by remember { mutableStateOf(false) }
     var isServerOnline by remember { mutableStateOf(false) }
+    var syncStatusText by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val syncManager = remember { DatabaseSyncManager() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Checa o status real de conexão com o servidor ao abrir a tela
+    // Auto-sync: checa servidor e sincroniza automaticamente ao abrir
     LaunchedEffect(Unit) {
-        isServerOnline = syncManager.checkServerOnline()
+        val online = syncManager.checkServerOnline()
+        isServerOnline = online
+        if (online) {
+            val localCount = repository.countMedicamentos()
+            if (localCount < 100) { // Se tiver poucos dados locais, sincroniza automaticamente
+                isSyncing = true
+                syncStatusText = "Conectado! Sincronizando..."
+                val imported = syncMedicinesFromServer(syncManager, repository.database) { status ->
+                    syncStatusText = status
+                }
+                syncStatusText = if (imported > 0) "$imported novos medicamentos ✅" else "Base atualizada"
+                isSyncing = false
+                searchResults = repository.searchMedicamentos(searchQuery, page = 0)
+            }
+        }
     }
 
     fun resetAndSearch(query: String) {
@@ -80,21 +224,40 @@ fun SearchScreen(
         topBar = {
             TopAppBar(
                 title = { 
-                    Text(
-                        text = if (isServerOnline) "HelpHealth 🟢 Online" else "HelpHealth 🔴 Offline (Local)", 
-                        fontWeight = FontWeight.Bold
-                    ) 
+                    Column {
+                        Text(
+                            text = if (isServerOnline) "HelpHealth 🟢 Online" else "HelpHealth 🔴 Offline", 
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                        if (syncStatusText.isNotBlank()) {
+                            Text(
+                                text = syncStatusText,
+                                fontSize = 11.sp,
+                                color = Color.White.copy(alpha = 0.8f)
+                            )
+                        }
+                    }
                 },
                 actions = {
                     IconButton(
                         onClick = {
-                            isSyncing = true
-                            onSyncClick()
                             coroutineScope.launch {
+                                isSyncing = true
+                                syncStatusText = "Verificando servidor..."
                                 isServerOnline = syncManager.checkServerOnline()
+                                if (isServerOnline) {
+                                    syncStatusText = "Sincronizando medicamentos..."
+                                    val imported = syncMedicinesFromServer(syncManager, repository.database) { status ->
+                                        syncStatusText = status
+                                    }
+                                    syncStatusText = if (imported > 0) "$imported novos medicamentos ✅" else "Base já atualizada"
+                                    resetAndSearch(searchQuery)
+                                } else {
+                                    syncStatusText = "Servidor indisponível ❌"
+                                }
+                                isSyncing = false
                             }
-                            resetAndSearch("")
-                            isSyncing = false
                         }
                     ) {
                         Text(if (isSyncing) "⏳" else "🔄", fontSize = 18.sp, color = Color.White)
@@ -146,11 +309,23 @@ fun SearchScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = if (searchQuery.isBlank()) "Nenhum medicamento cadastrado." else "Nenhum medicamento encontrado.",
-                        color = Color.Gray,
-                        fontSize = 16.sp
-                    )
+                    if (isSyncing) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(color = MaterialTheme.colors.primary)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                text = syncStatusText.ifBlank { "Baixando medicamentos da Anvisa..." },
+                                color = Color.Gray,
+                                fontSize = 14.sp
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = if (searchQuery.isBlank()) "Nenhum medicamento cadastrado.\nClique em 🔄 para sincronizar." else "Nenhum medicamento encontrado.",
+                            color = Color.Gray,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
