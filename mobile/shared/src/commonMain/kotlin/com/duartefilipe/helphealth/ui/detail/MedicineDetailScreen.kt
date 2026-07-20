@@ -1,11 +1,18 @@
 package com.duartefilipe.helphealth.ui.detail
 
+import androidx.compose.foundation.BorderStroke
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -14,9 +21,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.duartefilipe.helphealth.db.Medicamentos
+import com.duartefilipe.helphealth.repository.EquivalentMedicine
 import com.duartefilipe.helphealth.repository.MedicineRepository
 import com.duartefilipe.helphealth.ui.components.*
 import com.duartefilipe.helphealth.util.NetworkStatus
+import com.duartefilipe.helphealth.util.downloadPdf
+import com.duartefilipe.helphealth.util.scheduleMedicineReminder
+
+import com.russhwolf.settings.Settings
 
 @Composable
 fun MedicineDetailScreen(
@@ -24,11 +36,19 @@ fun MedicineDetailScreen(
     repository: MedicineRepository,
     networkStatus: NetworkStatus,
     onBackClick: () -> Unit,
-    onOpenBulaUrl: (String) -> Unit
+    onOpenUrl: (String) -> Unit
 ) {
-    var selectedUf by remember { mutableStateOf("SP") }
-    val interchangeability = remember(medicine) { repository.checkInterchangeability(medicine) }
+    val settings = remember { Settings() }
+    var selectedUf by remember { mutableStateOf(settings.getString("last_selected_uf", "SP")) }
+    val interchangeability = remember(medicine, selectedUf) { repository.checkInterchangeability(medicine, selectedUf) }
+    
+    // Favoritos
+    var isFavorito by remember(medicine.ean) { 
+        mutableStateOf(medicine.ean?.let { repository.isFavorito(it) } ?: false)
+    }
+
     val precoState = remember(medicine, selectedUf) {
+        settings.putString("last_selected_uf", selectedUf)
         medicine.ean?.let { repository.getPrecoState(it, selectedUf) }
     }
 
@@ -37,14 +57,29 @@ fun MedicineDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Intercambialidade & Detalhes") },
+                title = { Text("Detalhes do Medicamento", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Text("⬅", fontSize = 20.sp, color = Color.White)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Voltar")
+                    }
+                },
+                actions = {
+                    medicine.ean?.let { ean ->
+                        IconButton(onClick = {
+                            repository.toggleFavorito(ean, !isFavorito)
+                            isFavorito = !isFavorito
+                        }) {
+                            Icon(
+                                imageVector = if (isFavorito) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                contentDescription = "Favoritar",
+                                tint = if (isFavorito) Color.Red else Color.White
+                            )
+                        }
                     }
                 },
                 backgroundColor = MaterialTheme.colors.primary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                elevation = 0.dp
             )
         }
     ) { paddingValues ->
@@ -58,30 +93,51 @@ fun MedicineDetailScreen(
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    elevation = 4.dp,
-                    shape = RoundedCornerShape(12.dp)
+                    elevation = 0.dp,
+                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                    shape = RoundedCornerShape(16.dp),
+                    backgroundColor = MaterialTheme.colors.surface
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
                         ) {
                             Text(
                                 text = medicine.nome_comercial,
-                                fontSize = 22.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colors.primary
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colors.primary,
+                                modifier = Modifier.weight(1f)
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             CategoriaBadge(categoria = medicine.categoria_regulatoria)
                         }
 
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = "Princípio Ativo: ${medicine.principio_ativo}", fontWeight = FontWeight.Medium, fontSize = 15.sp)
-                        Text(text = "Dosagem/Forma: ${medicine.concentracao ?: ""} - ${medicine.forma_farmaceutica ?: ""}", fontSize = 14.sp, color = Color.Gray)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(text = "Princípio Ativo", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = medicine.principio_ativo, fontWeight = FontWeight.Medium, fontSize = 16.sp, color = Color.DarkGray)
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Text(text = "Dosagem e Forma", fontSize = 12.sp, color = Color.Gray)
+                        Text(text = "${medicine.concentracao ?: ""} • ${medicine.forma_farmaceutica ?: ""}", fontSize = 15.sp, color = Color.DarkGray)
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                        if (!medicine.ean.isNullOrBlank()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "Código EAN", fontSize = 12.sp, color = Color.Gray)
+                            Text(text = medicine.ean, fontSize = 15.sp, color = Color.DarkGray)
+                        }
 
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Wrap row of badges
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             TarjaBadge(tarja = medicine.tarja)
                             if (medicine.precisa_refrigeracao == 1L) RefrigeracaoBadge()
                             if (medicine.retencao_receita == 1L) RetencaoReceitaBadge()
@@ -91,88 +147,218 @@ fun MedicineDetailScreen(
                 }
             }
 
+            // Descrição (Pra que serve?)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    backgroundColor = MaterialTheme.colors.surface,
+                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 0.dp
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text(
+                            text = "Pra que serve?",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colors.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        Text(
+                            text = "Este medicamento contém o princípio ativo ${medicine.principio_ativo}. A indicação exata depende da concentração e forma farmacêutica. Para obter as indicações terapêuticas precisas, posologia e contraindicações, consulte a bula oficial do paciente clicando abaixo.",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            }
+
             // Preço Máximo ao Consumidor (PMC por UF)
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    backgroundColor = Color(0xFFE8F5E9),
-                    shape = RoundedCornerShape(10.dp)
+                    backgroundColor = MaterialTheme.colors.surface,
+                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 0.dp
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(20.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Preço Máximo (PMC)", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Text("Preço Máximo (PMC)", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.DarkGray)
 
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("UF: ", fontWeight = FontWeight.Bold)
+                                Text("UF: ", fontWeight = FontWeight.Bold, color = Color.Gray)
                                 DropdownUfSelector(selectedUf = selectedUf, ufList = ufList, onUfSelected = { selectedUf = it })
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
 
                         if (precoState != null) {
-                            Text(text = "PMC (18% ICMS - Teto): R$ ${precoState.pmc_18_icms ?: "N/A"}", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color(0xFF2E7D32))
-                            Text(text = "PMC (0% ICMS): R$ ${precoState.pmc_zero_icms ?: "N/A"}", fontSize = 13.sp, color = Color.Gray)
+                            Text(text = "Teto (18% ICMS): R$ ${precoState.pmc_18_icms ?: "N/A"}", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color(0xFF059669))
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(text = "Teto (0% ICMS): R$ ${precoState.pmc_zero_icms ?: "N/A"}", fontSize = 14.sp, color = Color.Gray)
                         } else {
-                            Text(text = "Preço Teto PMC gravado na base local para $selectedUf.", fontSize = 13.sp, color = Color.Gray)
+                            Text(text = "Preço Teto PMC não encontrado na base local para $selectedUf.", fontSize = 14.sp, color = Color.Gray)
                         }
                     }
                 }
             }
-
-            // Bulário Eletrônico & Farmácia Popular (Recursos Online / Offline)
+            
+            // Bula e Consulta
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
                     val isOnline = networkStatus == NetworkStatus.Available
                     Button(
                         onClick = {
-                            medicine.link_bula_paciente?.let { onOpenBulaUrl(it) }
+                            medicine.link_bula_paciente?.let {
+                                downloadPdf(it, medicine.nome_comercial)
+                            }
                         },
-                        enabled = isOnline && !medicine.link_bula_paciente.isNullOrBlank(),
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = MaterialTheme.colors.secondary,
-                            disabledBackgroundColor = Color.LightGray
-                        )
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        enabled = isOnline && !medicine.link_bula_paciente.isNullOrBlank()
                     ) {
-                        Text(if (isOnline) "📄 Abrir Bula Anvisa" else "📄 Bula (Offline - Inativo)")
+                        Text(if (isOnline) "Baixar Bula Oficial (PDF)" else "Sem conexão com internet", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val queryParam = medicine.ean.takeIf { !it.isNullOrBlank() } ?: medicine.nome_comercial
+                    OutlinedButton(
+                        onClick = {
+                            onOpenUrl("https://consultaremedios.com.br/busca?termo=$queryParam")
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        enabled = isOnline
+                    ) {
+                        Text("Ver no Consulta Remédios", fontWeight = FontWeight.Bold)
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedButton(
+                        onClick = {
+                            onOpenUrl("https://www.drogaraia.com.br/search?w=$queryParam")
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(25.dp),
+                        enabled = isOnline
+                    ) {
+                        Text("Ver na Droga Raia", fontWeight = FontWeight.Bold)
                     }
                 }
             }
 
-            // Seção de Medicamentos Equivalentes (Intercambiais)
+            // Criar Lembrete
             item {
-                Text(
-                    text = "Genéricos e Similares Intercambiáveis (${interchangeability.equivalents.size})",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colors.primary
-                )
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
+                    backgroundColor = MaterialTheme.colors.surface,
+                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                    shape = RoundedCornerShape(16.dp),
+                    elevation = 0.dp
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("Lembrete de Medicamento", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = MaterialTheme.colors.primary)
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text("Deseja criar um alarme para este remédio?", color = Color.Gray, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                val interval = 8
+                                medicine.ean?.let {
+                                    repository.addAlarme(it, interval, 0, medicine.nome_comercial, interval.toString())
+                                    scheduleMedicineReminder(medicine.nome_comercial, interval)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary)
+                        ) {
+                            Icon(Icons.Default.Notifications, contentDescription = null, tint = Color.White)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Lembrar a cada 8 horas", color = Color.White)
+                        }
+                    }
+                }
             }
 
-            items(interchangeability.equivalents) { equivalent ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = 2.dp,
-                    shape = RoundedCornerShape(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp).fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(text = equivalent.nome_comercial, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            Text(text = "Fabricante: ${equivalent.cnpj_fabricante ?: "Oficial"}", fontSize = 12.sp, color = Color.Gray)
+            // Genéricos e Similares (Equivalentes)
+            if (interchangeability.equivalents.isNotEmpty()) {
+                item {
+                    Text(
+                        "Genéricos e Similares",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp,
+                        color = Color.DarkGray,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
+
+                items(interchangeability.equivalents) { eqMed ->
+                    val isCheapest = interchangeability.equivalents.firstOrNull()?.medicine?.ean == eqMed.medicine.ean && eqMed.pmc18 != null
+                    EquivalentMedicineCard(
+                        equivalent = eqMed.medicine,
+                        preco = eqMed.pmc18,
+                        isCheapest = isCheapest
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun EquivalentMedicineCard(equivalent: Medicamentos, preco: Double?, isCheapest: Boolean) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        elevation = 0.dp,
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = equivalent.nome_comercial, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = equivalent.cnpj_fabricante ?: "Fabricante Desconhecido", fontSize = 12.sp, color = Color.Gray)
+                }
+                
+                if (preco != null) {
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text(
+                            text = "R$ ${preco.toString().replace(".", ",")}",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colors.primary
+                        )
+                        if (isCheapest) {
+                            Surface(
+                                color = Color(0xFFE8F5E9),
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Text(
+                                    text = "🏆 Mais Barato",
+                                    color = Color(0xFF2E7D32),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
                         }
-                        CategoriaBadge(categoria = equivalent.categoria_regulatoria)
                     }
                 }
             }

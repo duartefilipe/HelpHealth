@@ -30,6 +30,8 @@ kotlin {
                 @OptIn(org.jetbrains.compose.ExperimentalComposeLibrary::class)
                 implementation(compose.components.resources)
                 implementation("app.cash.sqldelight:runtime:2.0.1")
+                implementation("com.russhwolf:multiplatform-settings:1.1.1")
+                implementation("com.russhwolf:multiplatform-settings-no-arg:1.1.1")
             }
         }
         val androidMain by getting {

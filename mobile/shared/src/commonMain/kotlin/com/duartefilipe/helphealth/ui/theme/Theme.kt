@@ -7,12 +7,12 @@ import androidx.compose.material.lightColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-val PrimaryGreen = Color(0xFF00897B)
-val PrimaryDarkGreen = Color(0xFF005B4F)
-val SecondaryBlue = Color(0xFF0288D1)
+val PrimaryPurple = Color(0xFF8A2BE2) // Roxo Vibrante (estilo CliqueFarma)
+val PrimaryDarkPurple = Color(0xFF4A148C)
+val SecondaryColor = Color(0xFF00C853) // Verde secundário para sucesso/preço
 
-val BackgroundLight = Color(0xFFF5F7FA)
-val SurfaceLight = Color(0xFFFFFFFF)
+val BackgroundLight = Color(0xFFF9F9F9) // Fundo super limpo e sutil
+val SurfaceLight = Color(0xFFFFFFFF) // Cartões perfeitamente brancos
 
 // Badges Clínicos
 val ColorTarjaVermelha = Color(0xFFD32F2F)
@@ -26,27 +26,27 @@ val ColorSeloFabricante = Color(0xFF2E7D32)
 val ColorFarmaciaPopular = Color(0xFF1565C0)
 
 private val LightColorPalette = lightColors(
-    primary = PrimaryGreen,
-    primaryVariant = PrimaryDarkGreen,
-    secondary = SecondaryBlue,
+    primary = PrimaryPurple,
+    primaryVariant = PrimaryDarkPurple,
+    secondary = SecondaryColor,
     background = BackgroundLight,
     surface = SurfaceLight,
     onPrimary = Color.White,
     onSecondary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F)
+    onBackground = Color(0xFF212121),
+    onSurface = Color(0xFF212121)
 )
 
 private val DarkColorPalette = darkColors(
-    primary = PrimaryGreen,
-    primaryVariant = PrimaryDarkGreen,
-    secondary = SecondaryBlue,
-    background = Color(0xFF121212),
-    surface = Color(0xFF1E1E1E),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onBackground = Color(0xFFE6E1E5),
-    onSurface = Color(0xFFE6E1E5)
+    primary = Color(0xFFB388FF), // Roxo claro legível no escuro
+    primaryVariant = PrimaryPurple,
+    secondary = SecondaryColor,
+    background = Color(0xFF121212), // Cinza escuro elegante, não preto absoluto
+    surface = Color(0xFF1E1E1E), // Cartões levemente mais claros
+    onPrimary = Color.Black,
+    onSecondary = Color.Black,
+    onBackground = Color(0xFFF5F5F5),
+    onSurface = Color(0xFFF5F5F5)
 )
 
 @Composable

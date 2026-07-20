@@ -29,6 +29,20 @@ CREATE TABLE precos_cmed (
     pmc_18_icms REAL
 );
 
+CREATE TABLE favoritos (
+    ean TEXT PRIMARY KEY NOT NULL
+);
+
+CREATE TABLE alarmes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    ean TEXT NOT NULL,
+    hora INTEGER NOT NULL,
+    minuto INTEGER NOT NULL,
+    nome_medicamento TEXT NOT NULL,
+    dias_semana TEXT NOT NULL,
+    ativo INTEGER DEFAULT 1
+);
+
 CREATE INDEX idx_med_busca ON medicamentos (principio_ativo, concentracao, forma_farmaceutica);
 CREATE INDEX idx_med_ean ON medicamentos (ean);
 
@@ -57,6 +71,7 @@ SELECT COUNT(*) FROM medicamentos;
 getAllMedicamentosPaged:
 SELECT *
 FROM medicamentos
+ORDER BY nome_comercial ASC
 LIMIT :limit OFFSET :offset;
 
 searchByTextPaged:
@@ -65,6 +80,7 @@ FROM medicamentos
 WHERE nome_comercial LIKE '%' || :query || '%'
    OR principio_ativo LIKE '%' || :query || '%'
    OR ean LIKE '%' || :query || '%'
+ORDER BY nome_comercial ASC
 LIMIT :limit OFFSET :offset;
 
 findEquivalents:
@@ -85,4 +101,33 @@ SELECT *
 FROM precos_cmed
 WHERE ean = :ean AND uf = :uf;
 
--- Povoamento Inicial Removido para testes com base real
+-- Queries de Favoritos
+isFavorito:
+SELECT count(*) FROM favoritos WHERE ean = :ean;
+
+insertFavorito:
+INSERT OR REPLACE INTO favoritos (ean) VALUES (:ean);
+
+deleteFavorito:
+DELETE FROM favoritos WHERE ean = :ean;
+
+getFavoritosPaged:
+SELECT m.* 
+FROM medicamentos m
+INNER JOIN favoritos f ON m.ean = f.ean
+ORDER BY m.nome_comercial ASC
+LIMIT :limit OFFSET :offset;
+
+-- Queries de Alarmes
+insertAlarme:
+INSERT INTO alarmes (ean, hora, minuto, nome_medicamento, dias_semana, ativo)
+VALUES (:ean, :hora, :minuto, :nome_medicamento, :dias_semana, :ativo);
+
+updateAlarmeStatus:
+UPDATE alarmes SET ativo = :ativo WHERE id = :id;
+
+deleteAlarme:
+DELETE FROM alarmes WHERE id = :id;
+
+getAllAlarmes:
+SELECT * FROM alarmes ORDER BY hora ASC, minuto ASC;

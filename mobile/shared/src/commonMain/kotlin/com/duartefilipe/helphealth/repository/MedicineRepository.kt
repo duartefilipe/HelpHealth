@@ -6,9 +6,16 @@ import com.duartefilipe.helphealth.db.HelpHealthDatabase
 import com.duartefilipe.helphealth.db.Medicamentos
 import com.duartefilipe.helphealth.db.Precos_cmed
 
+import com.duartefilipe.helphealth.db.Alarmes
+
+data class EquivalentMedicine(
+    val medicine: Medicamentos,
+    val pmc18: Double?
+)
+
 data class InterchangeabilityResult(
     val selectedMedicine: Medicamentos,
-    val equivalents: List<Medicamentos>,
+    val equivalents: List<EquivalentMedicine>,
     val sameManufacturerBadge: Boolean
 )
 
@@ -48,14 +55,20 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
         return results
     }
 
-    fun checkInterchangeability(medicine: Medicamentos): InterchangeabilityResult {
-        val equivalents = dbQueries.findEquivalents(
+    fun checkInterchangeability(medicine: Medicamentos, uf: String): InterchangeabilityResult {
+        val equivalentsDb = dbQueries.findEquivalents(
             principioAtivo = medicine.principio_ativo,
             concentracao = medicine.concentracao,
             formaFarmaceutica = medicine.forma_farmaceutica
         ).executeAsList()
 
-        val referenceMed = equivalents.firstOrNull { it.categoria_regulatoria.equals("REFERENCIA", ignoreCase = true) }
+        // Fetch prices and map
+        val equivalents = equivalentsDb.map { eq ->
+            val preco = eq.ean?.let { getPrecoState(it, uf)?.pmc_18_icms }
+            EquivalentMedicine(eq, preco)
+        }.sortedBy { it.pmc18 ?: Double.MAX_VALUE }
+
+        val referenceMed = equivalentsDb.firstOrNull { it.categoria_regulatoria.equals("REFERENCIA", ignoreCase = true) }
         val isSameManufacturer = if (referenceMed != null && medicine.cnpj_fabricante != null) {
             medicine.cnpj_fabricante == referenceMed.cnpj_fabricante
         } else {
@@ -75,5 +88,36 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
 
     fun getPrecoState(ean: String, uf: String): Precos_cmed? {
         return dbQueries.getPrecoByEanAndUf(ean, uf.uppercase()).executeAsOneOrNull()
+    }
+
+    // --- FAVORITOS ---
+    fun isFavorito(ean: String): Boolean {
+        return dbQueries.isFavorito(ean).executeAsOne() > 0
+    }
+
+    fun toggleFavorito(ean: String, isFavoriting: Boolean) {
+        if (isFavoriting) {
+            dbQueries.insertFavorito(ean)
+        } else {
+            dbQueries.deleteFavorito(ean)
+        }
+    }
+
+    fun getFavoritosPaged(page: Int = 0, pageSize: Int = 20): List<Medicamentos> {
+        val offset = (page * pageSize).toLong()
+        return dbQueries.getFavoritosPaged(limit = pageSize.toLong(), offset = offset).executeAsList()
+    }
+
+    // --- ALARMES ---
+    fun addAlarme(ean: String, hora: Int, minuto: Int, nome: String, dias: String) {
+        dbQueries.insertAlarme(ean, hora.toLong(), minuto.toLong(), nome, dias, 1L)
+    }
+
+    fun getAllAlarmes(): List<Alarmes> {
+        return dbQueries.getAllAlarmes().executeAsList()
+    }
+
+    fun deleteAlarme(id: Long) {
+        dbQueries.deleteAlarme(id)
     }
 }

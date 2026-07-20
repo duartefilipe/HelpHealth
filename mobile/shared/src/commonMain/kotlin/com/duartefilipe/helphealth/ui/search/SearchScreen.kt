@@ -1,5 +1,6 @@
 package com.duartefilipe.helphealth.ui.search
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -171,9 +172,12 @@ suspend fun syncMedicinesFromServer(
 fun SearchScreen(
     repository: MedicineRepository,
     onMedicineSelect: (Medicamentos) -> Unit,
+    networkStatus: com.duartefilipe.helphealth.util.NetworkStatus,
     onScanBarcodeClick: () -> Unit,
     appScope: kotlinx.coroutines.CoroutineScope,
-    searchQueryOverride: String? = null
+    searchQueryOverride: String? = null,
+    isLightMode: Boolean = true,
+    onToggleTheme: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf(searchQueryOverride ?: "") }
     var currentPage by remember { mutableStateOf(0) }
@@ -185,6 +189,13 @@ fun SearchScreen(
     val listState = rememberLazyListState()
     val syncManager = remember { DatabaseSyncManager() }
     val coroutineScope = rememberCoroutineScope()
+
+    fun resetAndSearch(query: String) {
+        searchQuery = query
+        currentPage = 0
+        canLoadMore = true
+        searchResults = repository.searchMedicamentos(query, page = 0)
+    }
 
     // Auto-sync: checa servidor e sincroniza automaticamente ao abrir
     LaunchedEffect(Unit) {
@@ -205,13 +216,6 @@ fun SearchScreen(
                 }
             }
         }
-    }
-
-    fun resetAndSearch(query: String) {
-        searchQuery = query
-        currentPage = 0
-        canLoadMore = true
-        searchResults = repository.searchMedicamentos(query, page = 0)
     }
 
     val shouldLoadMore by remember {
@@ -258,8 +262,12 @@ fun SearchScreen(
                             )
                         }
                     }
+                    Text("Buscar Remédios", color = Color.White)
                 },
                 actions = {
+                    IconButton(onClick = onToggleTheme) {
+                        Text(if (isLightMode) "🌙" else "☀", fontSize = 20.sp)
+                    }
                     IconButton(
                         onClick = {
                             appScope.launch {
@@ -361,10 +369,14 @@ fun SearchScreen(
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp),
+                                    .padding(vertical = 16.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("Carregando mais medicamentos...", fontSize = 14.sp, color = Color.Gray)
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colors.primary
+                                )
                             }
                         }
                     }
@@ -380,42 +392,48 @@ fun MedicineCard(medicine: Medicamentos, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        elevation = 3.dp,
-        shape = RoundedCornerShape(10.dp)
+        elevation = 0.dp,
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+        shape = RoundedCornerShape(12.dp),
+        backgroundColor = MaterialTheme.colors.surface
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Text(
                     text = medicine.nome_comercial,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    color = MaterialTheme.colors.primary
+                    fontSize = 17.sp,
+                    color = MaterialTheme.colors.onSurface,
+                    modifier = Modifier.weight(1f)
                 )
+                Spacer(modifier = Modifier.width(8.dp))
                 CategoriaBadge(categoria = medicine.categoria_regulatoria)
             }
 
             Spacer(modifier = Modifier.height(4.dp))
 
             Text(
-                text = "Fórmula: ${medicine.principio_ativo}",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = Color.DarkGray
+                text = "Princípio Ativo: ${medicine.principio_ativo}",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Normal,
+                color = Color.Gray
             )
 
             if (!medicine.concentracao.isNullOrBlank() || !medicine.forma_farmaceutica.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
-                    text = "${medicine.concentracao ?: ""} - ${medicine.forma_farmaceutica ?: ""}",
+                    text = "${medicine.concentracao ?: ""} • ${medicine.forma_farmaceutica ?: ""}",
                     fontSize = 13.sp,
                     color = Color.Gray
                 )
             }
 
             if (!medicine.ean.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "EAN: ${medicine.ean}",
                     fontSize = 12.sp,
@@ -423,8 +441,9 @@ fun MedicineCard(medicine: Medicamentos, onClick: () -> Unit) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // Badges em Flow/Wrap (aqui usando Row simples com espaçamento)
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
