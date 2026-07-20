@@ -114,9 +114,19 @@ suspend fun syncMedicinesFromServer(
                 val retencaoReceita = if (extractBoolField(item, "retencaoReceita")) 1L else 0L
                 val precisaRefrigeracao = if (extractBoolField(item, "precisaRefrigeracao")) 1L else 0L
                 val fazParteFarmaciaPopular = if (extractBoolField(item, "fazParteFarmaciaPopular")) 1L else 0L
+                val linkBulaPaciente = extractStringField(item, "linkBulaPaciente")
+                val cnpjFabricante = extractStringField(item, "cnpjFabricante")
+                val razaoSocial = extractStringField(item, "razaoSocial") ?: ""
+                val pmcZeroSp = extractStringField(item, "pmcZeroSp")?.toDoubleOrNull()
+                val pmc18Sp = extractStringField(item, "pmc18Sp")?.toDoubleOrNull()
+                val pmcZeroRs = extractStringField(item, "pmcZeroRs")?.toDoubleOrNull()
+                val pmc18Rs = extractStringField(item, "pmc18Rs")?.toDoubleOrNull()
 
                 if (nomeComercial.isNotBlank()) {
                     try {
+                        if (cnpjFabricante != null) {
+                            dbQueries.insertFabricante(cnpjFabricante, razaoSocial, razaoSocial)
+                        }
                         dbQueries.insertMedicamento(
                             ean = ean,
                             nome_comercial = nomeComercial,
@@ -127,9 +137,17 @@ suspend fun syncMedicinesFromServer(
                             tarja = tarja,
                             retencao_receita = retencaoReceita,
                             precisa_refrigeracao = precisaRefrigeracao,
-                            link_bula_paciente = null,
-                            faz_parte_farmacia_popular = fazParteFarmaciaPopular
+                            link_bula_paciente = linkBulaPaciente,
+                            faz_parte_farmacia_popular = fazParteFarmaciaPopular,
+                            cnpj_fabricante = cnpjFabricante,
+                            status_registro = "ATIVO"
                         )
+                        if (pmcZeroSp != null || pmc18Sp != null) {
+                            dbQueries.insertPreco(ean, "SP", pmcZeroSp, pmc18Sp)
+                        }
+                        if (pmcZeroRs != null || pmc18Rs != null) {
+                            dbQueries.insertPreco(ean, "RS", pmcZeroRs, pmc18Rs)
+                        }
                         totalImported++
                     } catch (_: Exception) {
                         // Ignora duplicatas

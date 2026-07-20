@@ -14,7 +14,7 @@ class DatabaseSyncManager(
 
     suspend fun checkServerOnline(): Boolean = withContext(Dispatchers.IO) {
         try {
-            val url = URL(getVersionUrl())
+            val url = URL(getMedicinesUrl(0, 1))
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 3000
             connection.readTimeout = 3000

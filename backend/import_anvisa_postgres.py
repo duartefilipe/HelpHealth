@@ -121,16 +121,12 @@ for idx, row in df.iterrows():
         pmc_18 = parse_preco(row.get('PMC 18 %'))
 
         if pmc_0 > 0 or pmc_18 > 0:
-            cur.execute("SELECT id FROM medicamentos WHERE ean = %s", (ean1[:50],))
-            med_row = cur.fetchone()
-            if med_row:
-                med_id = med_row[0]
-                for uf in ['RS', 'SP']:
-                    cur.execute(
-                        "INSERT INTO precos_cmed (medicamento_id, uf, pmc_zero_icms, pmc_18_icms) VALUES (%s, %s, %s, %s)",
-                        (med_id, uf, pmc_0, pmc_18)
-                    )
-                    preco_count += 1
+            for uf in ['RS', 'SP']:
+                cur.execute(
+                    "INSERT INTO precos_cmed (ean, uf, pmc_zero_icms, pmc_18_icms) VALUES (%s, %s, %s, %s)",
+                    (ean1[:50], uf, pmc_0, pmc_18)
+                )
+                preco_count += 1
 
         if (idx + 1) % 5000 == 0:
             print(f"  Progresso preços: linha {idx+1}...")

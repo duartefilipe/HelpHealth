@@ -108,7 +108,7 @@ public class DatabaseSyncController {
             @RequestParam(defaultValue = "500") int size) {
         try {
             var pageable = org.springframework.data.domain.PageRequest.of(page, size);
-            var medicinesPage = medicamentoRepository.findAll(pageable);
+            var medicinesPage = medicamentoRepository.findAllFlat(pageable);
             return ResponseEntity.ok(medicinesPage);
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));

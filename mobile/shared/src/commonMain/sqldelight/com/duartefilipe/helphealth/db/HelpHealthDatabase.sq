@@ -35,8 +35,16 @@ CREATE INDEX idx_med_ean ON medicamentos (ean);
 -- Queries de escrita para sync
 
 insertMedicamento:
-INSERT OR IGNORE INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular)
-VALUES (:ean, :nome_comercial, :principio_ativo, :concentracao, :forma_farmaceutica, :categoria_regulatoria, :tarja, :retencao_receita, :precisa_refrigeracao, :link_bula_paciente, :faz_parte_farmacia_popular);
+INSERT OR IGNORE INTO medicamentos (ean, nome_comercial, principio_ativo, concentracao, forma_farmaceutica, categoria_regulatoria, tarja, retencao_receita, precisa_refrigeracao, link_bula_paciente, faz_parte_farmacia_popular, cnpj_fabricante, status_registro)
+VALUES (:ean, :nome_comercial, :principio_ativo, :concentracao, :forma_farmaceutica, :categoria_regulatoria, :tarja, :retencao_receita, :precisa_refrigeracao, :link_bula_paciente, :faz_parte_farmacia_popular, :cnpj_fabricante, :status_registro);
+
+insertFabricante:
+INSERT OR IGNORE INTO fabricantes (cnpj, razao_social, nome_fantasia)
+VALUES (:cnpj, :razao_social, :nome_fantasia);
+
+insertPreco:
+INSERT OR REPLACE INTO precos_cmed (ean, uf, pmc_zero_icms, pmc_18_icms)
+VALUES (:ean, :uf, :pmc_zero_icms, :pmc_18_icms);
 
 deleteAllMedicamentos:
 DELETE FROM medicamentos;
