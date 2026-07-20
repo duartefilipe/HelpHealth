@@ -21,7 +21,10 @@ import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Map;
 
+import org.springframework.web.bind.annotation.CrossOrigin;
+
 @RestController
+@CrossOrigin(origins = "*")
 @RequestMapping("/api/v1/database")
 public class DatabaseSyncController {
 
