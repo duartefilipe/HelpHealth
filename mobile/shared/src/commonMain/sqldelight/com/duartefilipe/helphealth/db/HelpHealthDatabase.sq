@@ -36,10 +36,13 @@ CREATE TABLE favoritos (
 CREATE TABLE alarmes (
     id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
     ean TEXT NOT NULL,
-    hora INTEGER NOT NULL,
-    minuto INTEGER NOT NULL,
     nome_medicamento TEXT NOT NULL,
-    dias_semana TEXT NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'INTERVALO',
+    horarios TEXT NOT NULL,
+    intervalo INTEGER,
+    dose TEXT NOT NULL DEFAULT '1 unidade',
+    toque_uri TEXT,
+    toque_nome TEXT,
     ativo INTEGER DEFAULT 1
 );
 
@@ -120,8 +123,13 @@ LIMIT :limit OFFSET :offset;
 
 -- Queries de Alarmes
 insertAlarme:
-INSERT INTO alarmes (ean, hora, minuto, nome_medicamento, dias_semana, ativo)
-VALUES (:ean, :hora, :minuto, :nome_medicamento, :dias_semana, :ativo);
+INSERT INTO alarmes (ean, nome_medicamento, tipo, horarios, intervalo, dose, toque_uri, toque_nome, ativo)
+VALUES (:ean, :nome_medicamento, :tipo, :horarios, :intervalo, :dose, :toque_uri, :toque_nome, :ativo);
+
+updateAlarmeCompleto:
+UPDATE alarmes 
+SET nome_medicamento = :nome_medicamento, tipo = :tipo, horarios = :horarios, intervalo = :intervalo, dose = :dose, toque_uri = :toque_uri, toque_nome = :toque_nome 
+WHERE id = :id;
 
 updateAlarmeStatus:
 UPDATE alarmes SET ativo = :ativo WHERE id = :id;
@@ -130,4 +138,4 @@ deleteAlarme:
 DELETE FROM alarmes WHERE id = :id;
 
 getAllAlarmes:
-SELECT * FROM alarmes ORDER BY hora ASC, minuto ASC;
+SELECT * FROM alarmes ORDER BY id ASC;

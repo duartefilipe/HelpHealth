@@ -109,8 +109,31 @@ class MedicineRepository(databaseDriverFactory: DatabaseDriverFactory) {
     }
 
     // --- ALARMES ---
-    fun addAlarme(ean: String, hora: Int, minuto: Int, nome: String, dias: String) {
-        dbQueries.insertAlarme(ean, hora.toLong(), minuto.toLong(), nome, dias, 1L)
+    fun addAlarme(ean: String, nome: String, tipo: String, horarios: String, intervalo: Int?, dose: String, toqueUri: String?, toqueNome: String?) {
+        dbQueries.insertAlarme(
+            ean = ean,
+            nome_medicamento = nome,
+            tipo = tipo,
+            horarios = horarios,
+            intervalo = intervalo?.toLong(),
+            dose = dose,
+            toque_uri = toqueUri,
+            toque_nome = toqueNome,
+            ativo = 1L
+        )
+    }
+
+    fun updateAlarme(id: Long, nome: String, tipo: String, horarios: String, intervalo: Int?, dose: String, toqueUri: String?, toqueNome: String?) {
+        dbQueries.updateAlarmeCompleto(
+            id = id,
+            nome_medicamento = nome,
+            tipo = tipo,
+            horarios = horarios,
+            intervalo = intervalo?.toLong(),
+            dose = dose,
+            toque_uri = toqueUri,
+            toque_nome = toqueNome
+        )
     }
 
     fun getAllAlarmes(): List<Alarmes> {

@@ -274,8 +274,27 @@ fun MedicineDetailScreen(
                             onClick = {
                                 val interval = 8
                                 medicine.ean?.let {
-                                    repository.addAlarme(it, interval, 0, medicine.nome_comercial, interval.toString())
-                                    scheduleMedicineReminder(medicine.nome_comercial, interval)
+                                    repository.addAlarme(
+                                        ean = it,
+                                        nome = medicine.nome_comercial,
+                                        tipo = "INTERVALO",
+                                        horarios = "Agora",
+                                        intervalo = interval,
+                                        dose = "1 unidade",
+                                        toqueUri = "",
+                                        toqueNome = "Padrão do Sistema"
+                                    )
+                                    val lastAlarm = repository.getAllAlarmes().lastOrNull()
+                                    if (lastAlarm != null) {
+                                        scheduleMedicineReminder(
+                                            alarmId = lastAlarm.id,
+                                            medicineName = medicine.nome_comercial,
+                                            dose = "1 unidade",
+                                            timeMillis = 0L, // Handled in Android side
+                                            intervalHours = interval,
+                                            ringtoneUri = ""
+                                        )
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),

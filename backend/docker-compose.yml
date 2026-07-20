@@ -15,6 +15,7 @@ services:
       - SPRING_DATASOURCE_PASSWORD=postgres
       - SERVER_PORT=8090
       - HELPHEALTH_SQLITE_DB_PATH=/app/data/anvisa_app_database.db
+      - TZ=America/Sao_Paulo
     volumes:
       - helphealth-data:/app/data
 

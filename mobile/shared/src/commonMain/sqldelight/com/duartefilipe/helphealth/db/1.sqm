@@ -1,0 +1,14 @@
+DROP TABLE alarmes;
+
+CREATE TABLE alarmes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    ean TEXT NOT NULL,
+    nome_medicamento TEXT NOT NULL,
+    tipo TEXT NOT NULL DEFAULT 'INTERVALO',
+    horarios TEXT NOT NULL,
+    intervalo INTEGER,
+    dose TEXT NOT NULL DEFAULT '1 unidade',
+    toque_uri TEXT,
+    toque_nome TEXT,
+    ativo INTEGER DEFAULT 1
+);
