@@ -6,7 +6,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 class DatabaseSyncManager(
-    private val backendBaseUrl: String = "http://192.168.31.229:8090"
+    private val backendBaseUrl: String = "http://192.168.31.183:8090"
 ) {
     fun getSyncUrl(): String = "$backendBaseUrl/api/v1/database/download"
     fun getVersionUrl(): String = "$backendBaseUrl/api/v1/database/version"
